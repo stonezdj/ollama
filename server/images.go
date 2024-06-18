@@ -943,6 +943,8 @@ func pullModelManifest(ctx context.Context, mp ModelPath, regOpts *registryOptio
 	return m, err
 }
 
+// var Token string
+
 // GetSHA256Digest returns the SHA256 hash of a given buffer and returns it, and the size of buffer
 func GetSHA256Digest(r io.Reader) (string, int64) {
 	h := sha256.New()
@@ -1001,10 +1003,13 @@ func makeRequestWithRetry(ctx context.Context, method string, requestURL *url.UR
 		case resp.StatusCode == http.StatusUnauthorized:
 			// Handle authentication error with one retry
 			challenge := parseRegistryChallenge(resp.Header.Get("www-authenticate"))
+			fmt.Printf("The challenge is %+v\n", challenge)
+
 			token, err := getAuthorizationToken(ctx, challenge)
 			if err != nil {
 				return nil, err
 			}
+			//			Token = token
 			anonymous = getTokenSubject(token) == "anonymous"
 			regOpts.Token = token
 			if body != nil {
@@ -1043,7 +1048,7 @@ func makeRequest(ctx context.Context, method string, requestURL *url.URL, header
 	if requestURL.Scheme != "http" && regOpts != nil && regOpts.Insecure {
 		requestURL.Scheme = "http"
 	}
-
+	fmt.Printf("request url is %v\n", requestURL.String())
 	req, err := http.NewRequestWithContext(ctx, method, requestURL.String(), body)
 	if err != nil {
 		return nil, err
@@ -1104,6 +1109,13 @@ func getValue(header, key string) string {
 }
 
 func parseRegistryChallenge(authStr string) registryChallenge {
+	// if strings.HasPrefix(authStr, "Basic ") {
+	// 	return registryChallenge{
+	// 		Realm:   "https://10.202.250.222/service/token",
+	// 		Service: "harbor-registry",
+	// 		Scope:   "repository:library/codellama:push",
+	// 	}
+	// }
 	authStr = strings.TrimPrefix(authStr, "Bearer ")
 
 	return registryChallenge{

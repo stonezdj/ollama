@@ -213,6 +213,10 @@ func (b *blobUpload) uploadPart(ctx context.Context, method string, requestURL *
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/octet-stream")
 	headers.Set("Content-Length", fmt.Sprintf("%d", part.Size))
+	// if len(Token) > 0 {
+	// 	fmt.Println("Set bearer token")
+	// 	headers.Set("Authorization", fmt.Sprintf("Bearer %v", Token))
+	// }
 
 	if method == http.MethodPatch {
 		headers.Set("X-Redirect-Uploads", "1")

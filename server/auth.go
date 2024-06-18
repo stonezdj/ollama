@@ -66,8 +66,12 @@ func getAuthorizationToken(ctx context.Context, challenge registryChallenge) (st
 	}
 
 	headers.Add("Authorization", signature)
-
-	response, err := makeRequest(ctx, http.MethodGet, redirectURL, headers, nil, nil)
+	regOpts := &registryOptions{
+		Insecure: false,
+		Username: "admin",
+		Password: "Harbor12345",
+	}
+	response, err := makeRequest(ctx, http.MethodGet, redirectURL, headers, nil, regOpts)
 	if err != nil {
 		return "", err
 	}
@@ -90,6 +94,6 @@ func getAuthorizationToken(ctx context.Context, challenge registryChallenge) (st
 	if err := json.Unmarshal(body, &token); err != nil {
 		return "", err
 	}
-
+	fmt.Printf("token: %s\n", token.Token)
 	return token.Token, nil
 }
