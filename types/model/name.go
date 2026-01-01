@@ -147,23 +147,45 @@ func ParseNameBare(s string) Name {
 		s, n.Tag, _ = cutPromised(s, ":")
 	}
 
+	// Extract model from the end (after last "/")
 	s, n.Model, promised = cutPromised(s, "/")
 	if !promised {
 		n.Model = s
 		return n
 	}
 
-	s, n.Namespace, promised = cutPromised(s, "/")
-	if !promised {
-		n.Namespace = s
-		return n
-	}
+	// Now s contains "host/namespace" or "host/namespace1/namespace2/..."
+	// We need to separate the host from the namespace(s)
 
-	scheme, host, ok := strings.Cut(s, "://")
-	if !ok {
-		host = scheme
+	// Check if there's a scheme
+	_, remainder, hasScheme := strings.Cut(s, "://")
+	if hasScheme {
+		// If there's a scheme, find the first "/" after the scheme to separate host from namespace
+		hostAndNamespace := remainder
+		if idx := strings.Index(hostAndNamespace, "/"); idx >= 0 {
+			n.Host = hostAndNamespace[:idx]
+			n.Namespace = hostAndNamespace[idx+1:]
+		} else {
+			// No namespace, just host after scheme
+			n.Host = hostAndNamespace
+		}
+	} else {
+		// No scheme, split by "/" and determine host vs namespace
+		parts := strings.Split(s, "/")
+
+		if len(parts) == 1 {
+			// Only one part left - this is the namespace
+			n.Namespace = parts[0]
+		} else {
+			// Multiple parts: first part is the host, rest is namespace
+			// The assumption is that if there are 2+ parts, the format is host/namespace(s)
+			n.Host = parts[0]
+			if len(parts) > 1 {
+				// Everything after the host is namespace (can contain multiple levels)
+				n.Namespace = strings.Join(parts[1:], "/")
+			}
+		}
 	}
-	n.Host = host
 
 	return n
 }
@@ -335,6 +357,11 @@ func isValidPart(kind partKind, s string) bool {
 			}
 		case ':':
 			if kind != kindHost && kind != kindDigest {
+				return false
+			}
+		case '/':
+			// Allow "/" in namespace for multi-level namespaces
+			if kind != kindNamespace {
 				return false
 			}
 		default:

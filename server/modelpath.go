@@ -53,22 +53,50 @@ func ParseModelPath(name string) ModelPath {
 	}
 
 	name = strings.ReplaceAll(name, string(os.PathSeparator), "/")
-	parts := strings.Split(name, "/")
-	switch len(parts) {
-	case 3:
-		mp.Registry = parts[0]
-		mp.Namespace = parts[1]
-		mp.Repository = parts[2]
-	case 2:
-		mp.Namespace = parts[0]
-		mp.Repository = parts[1]
-	case 1:
-		mp.Repository = parts[0]
+
+	// First, extract tag from the end (after last ":")
+	// We need to ensure the ":" is after the last "/" to distinguish it from port numbers
+	lastSlashIdx := strings.LastIndex(name, "/")
+	lastColonIdx := strings.LastIndex(name, ":")
+	if lastColonIdx > lastSlashIdx && lastColonIdx >= 0 {
+		// The ":" is after the last "/", so it's a tag separator
+		mp.Tag = name[lastColonIdx+1:]
+		name = name[:lastColonIdx]
 	}
 
-	if repo, tag, found := strings.Cut(mp.Repository, ":"); found {
-		mp.Repository = repo
-		mp.Tag = tag
+	parts := strings.Split(name, "/")
+
+	switch len(parts) {
+	case 0:
+		// Empty, shouldn't happen but handle gracefully
+		return mp
+	case 1:
+		// Only repository name
+		mp.Repository = parts[0]
+	case 2:
+		// Could be "namespace/repository" or "registry/repository"
+		// Check if first part looks like a registry (has dots, colons, or is localhost)
+		if strings.Contains(parts[0], ".") || strings.Contains(parts[0], ":") || parts[0] == "localhost" {
+			mp.Registry = parts[0]
+			mp.Repository = parts[1]
+		} else {
+			// Treat as namespace/repository
+			mp.Namespace = parts[0]
+			mp.Repository = parts[1]
+		}
+	default:
+		// 3 or more parts: registry/namespace1/namespace2/.../repository
+		// First part is registry if it looks like one
+		if strings.Contains(parts[0], ".") || strings.Contains(parts[0], ":") || parts[0] == "localhost" {
+			mp.Registry = parts[0]
+			// Last part is repository, everything in between is namespace
+			mp.Repository = parts[len(parts)-1]
+			mp.Namespace = strings.Join(parts[1:len(parts)-1], "/")
+		} else {
+			// No registry, all parts before last are namespace
+			mp.Repository = parts[len(parts)-1]
+			mp.Namespace = strings.Join(parts[0:len(parts)-1], "/")
+		}
 	}
 
 	return mp
