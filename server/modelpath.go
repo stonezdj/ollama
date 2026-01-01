@@ -46,6 +46,7 @@ func ParseModelPath(name string) ModelPath {
 		Tag:            DefaultTag,
 	}
 
+	// Extract protocol scheme if present
 	before, after, found := strings.Cut(name, "://")
 	if found {
 		mp.ProtocolScheme = before
@@ -53,22 +54,34 @@ func ParseModelPath(name string) ModelPath {
 	}
 
 	name = strings.ReplaceAll(name, string(os.PathSeparator), "/")
-	parts := strings.Split(name, "/")
-	switch len(parts) {
-	case 3:
-		mp.Registry = parts[0]
-		mp.Namespace = parts[1]
-		mp.Repository = parts[2]
-	case 2:
-		mp.Namespace = parts[0]
-		mp.Repository = parts[1]
-	case 1:
-		mp.Repository = parts[0]
+
+	// Use ParseNameBare to parse the name, then map the fields
+	n := model.ParseNameBare(name)
+
+	// Map parsed name fields to model path
+	// ParseNameBare treats the first part as Host, but we need to check if it's actually a registry
+	// A registry typically contains dots (domain), colons (port), or is "localhost"
+	if n.Host != "" && (strings.Contains(n.Host, ".") || strings.Contains(n.Host, ":") || n.Host == "localhost") {
+		mp.Registry = n.Host
+		if n.Namespace != "" {
+			mp.Namespace = n.Namespace
+		}
+	} else if n.Host != "" {
+		// First part doesn't look like a registry, so it's part of the namespace
+		if n.Namespace != "" {
+			mp.Namespace = n.Host + "/" + n.Namespace
+		} else {
+			mp.Namespace = n.Host
+		}
+	} else if n.Namespace != "" {
+		mp.Namespace = n.Namespace
 	}
 
-	if repo, tag, found := strings.Cut(mp.Repository, ":"); found {
-		mp.Repository = repo
-		mp.Tag = tag
+	if n.Model != "" {
+		mp.Repository = n.Model
+	}
+	if n.Tag != "" {
+		mp.Tag = n.Tag
 	}
 
 	return mp

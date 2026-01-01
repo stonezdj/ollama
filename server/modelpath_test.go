@@ -139,6 +139,61 @@ func TestParseModelPath(t *testing.T) {
 				Tag:            DefaultTag,
 			},
 		},
+		{
+			"multi-level namespace with registry IP",
+			"192.168.1.1/proxycache/library/qwen:0.5b",
+			ModelPath{
+				ProtocolScheme: "https",
+				Registry:       "192.168.1.1",
+				Namespace:      "proxycache/library",
+				Repository:     "qwen",
+				Tag:            "0.5b",
+			},
+		},
+		{
+			"multi-level namespace with registry domain",
+			"registry.example.com/team/project/model:v1.0",
+			ModelPath{
+				ProtocolScheme: "https",
+				Registry:       "registry.example.com",
+				Namespace:      "team/project",
+				Repository:     "model",
+				Tag:            "v1.0",
+			},
+		},
+		{
+			"multi-level namespace with localhost and port",
+			"localhost:5000/a/b/c/model:latest",
+			ModelPath{
+				ProtocolScheme: "https",
+				Registry:       "localhost:5000",
+				Namespace:      "a/b/c",
+				Repository:     "model",
+				Tag:            "latest",
+			},
+		},
+		{
+			"multi-level namespace without registry",
+			"team/project/subproject/model:tag",
+			ModelPath{
+				ProtocolScheme: "https",
+				Registry:       DefaultRegistry,
+				Namespace:      "team/project/subproject",
+				Repository:     "model",
+				Tag:            "tag",
+			},
+		},
+		{
+			"multi-level namespace with protocol",
+			"https://registry.example.com/ns1/ns2/ns3/repo:tag",
+			ModelPath{
+				ProtocolScheme: "https",
+				Registry:       "registry.example.com",
+				Namespace:      "ns1/ns2/ns3",
+				Repository:     "repo",
+				Tag:            "tag",
+			},
+		},
 	}
 
 	for _, tc := range tests {

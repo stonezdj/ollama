@@ -93,6 +93,36 @@ func TestParseNameParts(t *testing.T) {
 			wantFilepath: filepath.Join("registry.ollama.ai", "library", "model", "latest"),
 		},
 		{
+			in: "192.168.1.1/proxycache/library/qwen:0.5b",
+			want: Name{
+				Host:      "192.168.1.1",
+				Namespace: "proxycache/library",
+				Model:     "qwen",
+				Tag:       "0.5b",
+			},
+			wantFilepath: filepath.Join("192.168.1.1", "proxycache/library", "qwen", "0.5b"),
+		},
+		{
+			in: "registry.example.com/team/project/model:tag",
+			want: Name{
+				Host:      "registry.example.com",
+				Namespace: "team/project",
+				Model:     "model",
+				Tag:       "tag",
+			},
+			wantFilepath: filepath.Join("registry.example.com", "team/project", "model", "tag"),
+		},
+		{
+			in: "localhost:5000/a/b/c/model:latest",
+			want: Name{
+				Host:      "localhost:5000",
+				Namespace: "a/b/c",
+				Model:     "model",
+				Tag:       "latest",
+			},
+			wantFilepath: filepath.Join("localhost:5000", "a/b/c", "model", "latest"),
+		},
+		{
 			in: "h/nn/mm:t",
 			want: Name{
 				Host:      "h",
@@ -338,13 +368,15 @@ func TestIsValidNamespace(t *testing.T) {
 		{"", false},
 		{"a", true},
 		{"a:b", false},
-		{"a/b", false},
+		{"a/b", true}, // Multi-level namespaces are now supported
 		{"a:b/c", false},
 		{"a/b:c", false},
 		{"a/b:c", false},
 		{"a/b:c/d", false},
 		{"a/b:c/d@e", false},
 		{"a/b:c/d@sha256-100", false},
+		{"proxycache/library", true},      // Multi-level namespace example
+		{"team/project/subproject", true}, // Multi-level namespace example
 		{"himynameisjoe", true},
 		{"himynameisreallyreallyreallyreallylongbutitshouldstillbevalid", true},
 	}
