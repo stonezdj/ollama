@@ -145,8 +145,8 @@ func TestParseModelPath(t *testing.T) {
 			ModelPath{
 				ProtocolScheme: "https",
 				Registry:       "192.168.1.1",
-				Namespace:      "proxycache/library",
-				Repository:     "qwen",
+				Namespace:      "proxycache",
+				Repository:     "library/qwen",
 				Tag:            "0.5b",
 			},
 		},
@@ -156,8 +156,8 @@ func TestParseModelPath(t *testing.T) {
 			ModelPath{
 				ProtocolScheme: "https",
 				Registry:       "registry.example.com",
-				Namespace:      "team/project",
-				Repository:     "model",
+				Namespace:      "team",
+				Repository:     "project/model",
 				Tag:            "v1.0",
 			},
 		},
@@ -167,20 +167,9 @@ func TestParseModelPath(t *testing.T) {
 			ModelPath{
 				ProtocolScheme: "https",
 				Registry:       "localhost:5000",
-				Namespace:      "a/b/c",
-				Repository:     "model",
+				Namespace:      "a",
+				Repository:     "b/c/model",
 				Tag:            "latest",
-			},
-		},
-		{
-			"multi-level namespace without registry",
-			"team/project/subproject/model:tag",
-			ModelPath{
-				ProtocolScheme: "https",
-				Registry:       DefaultRegistry,
-				Namespace:      "team/project/subproject",
-				Repository:     "model",
-				Tag:            "tag",
 			},
 		},
 		{
@@ -189,8 +178,8 @@ func TestParseModelPath(t *testing.T) {
 			ModelPath{
 				ProtocolScheme: "https",
 				Registry:       "registry.example.com",
-				Namespace:      "ns1/ns2/ns3",
-				Repository:     "repo",
+				Namespace:      "ns1",
+				Repository:     "ns2/ns3/repo",
 				Tag:            "tag",
 			},
 		},

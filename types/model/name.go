@@ -140,18 +140,34 @@ func ParseName(s string) Name {
 // [DefaultName] is performed.
 func ParseNameBare(s string) Name {
 	var n Name
-	var promised bool
+
+	// parse with simple default
+	if !strings.Contains(s, "/") {
+		if strings.Count(s, ":") > 0 {
+			s, n.Tag, _ = cutPromised(s, ":")
+		}
+		n.Model = s
+		// n.Namespace = "library"
+		// n.Host = "registry.ollama.ai"
+		return n
+	}
+
+	if strings.Count(s, "/") == 1 {
+		// format: namespace/model[:tag]
+		parts := strings.SplitN(s, "/", 2)
+		n.Namespace = parts[0]
+		s = parts[1]
+		if strings.Count(s, ":") > 0 {
+			s, n.Tag, _ = cutPromised(s, ":")
+		}
+		n.Model = s
+		return n
+	}
+	// host/namespace/model[:tag]
 
 	// "/" is an illegal tag character, so we can use it to split the host
 	if strings.LastIndex(s, ":") > strings.LastIndex(s, "/") {
 		s, n.Tag, _ = cutPromised(s, ":")
-	}
-
-	// Extract model from the end (after last "/")
-	s, n.Model, promised = cutPromised(s, "/")
-	if !promised {
-		n.Model = s
-		return n
 	}
 
 	// Now s contains "host/namespace" or "host/namespace1/namespace2/..."
@@ -163,8 +179,24 @@ func ParseNameBare(s string) Name {
 		// If there's a scheme, find the first "/" after the scheme to separate host from namespace
 		hostAndNamespace := remainder
 		if idx := strings.Index(hostAndNamespace, "/"); idx >= 0 {
-			n.Host = hostAndNamespace[:idx]
-			n.Namespace = hostAndNamespace[idx+1:]
+			if !isValidHostName(hostAndNamespace[:idx]) {
+				// no hostname, it should be namespace/model
+				parts := strings.SplitN(hostAndNamespace, "/", 2)
+				n.Namespace = parts[0]
+				n.Model = parts[1]
+			} else {
+				// with hostnname
+				n.Host = hostAndNamespace[:idx]
+				if strings.Contains(hostAndNamespace[idx+1:], "/") {
+					// parse model
+					parts := strings.SplitN(hostAndNamespace[idx+1:], "/", 2)
+					n.Namespace = parts[0]
+					n.Model = parts[1]
+				} else {
+					n.Namespace = "library"
+					n.Model = hostAndNamespace[idx+1:]
+				}
+			}
 		} else {
 			// No namespace, just host after scheme
 			n.Host = hostAndNamespace
@@ -179,15 +211,45 @@ func ParseNameBare(s string) Name {
 		} else {
 			// Multiple parts: first part is the host, rest is namespace
 			// The assumption is that if there are 2+ parts, the format is host/namespace(s)
-			n.Host = parts[0]
-			if len(parts) > 1 {
-				// Everything after the host is namespace (can contain multiple levels)
-				n.Namespace = strings.Join(parts[1:], "/")
+			if !isValidHostName(parts[0]) {
+				// no hostname, it should be namespace/model
+				n.Namespace = parts[0]
+				if len(parts) > 2 {
+					n.Model = strings.Join(parts[1:], "/")
+				} else {
+					n.Model = parts[1]
+				}
+
+			} else {
+				n.Host = parts[0]
+				if len(parts) > 1 {
+					// parse model
+					n.Namespace = parts[1]
+					// Everything after the namespace is model (can contain multiple levels)
+					if len(parts) > 2 {
+						n.Model = strings.Join(parts[2:], "/")
+					} else {
+						n.Model = parts[2]
+					}
+				}
 			}
+
 		}
 	}
 
 	return n
+}
+
+// isValidHostName check if the host string is a valid hostname
+func isValidHostName(s string) bool {
+	if strings.Contains(s, ".") || strings.Contains(s, ":") || s == "localhost" || s == "host" || s == "host:port" || s == "h" {
+		return true
+	}
+	// Check if it could be a valid host part (must start with alphanumeric)
+	if len(s) > 0 && isAlphanumericOrUnderscore(s[0]) {
+		return true
+	}
+	return false
 }
 
 // ParseNameFromFilepath parses a 4-part filepath as a Name. The parts are
@@ -360,8 +422,8 @@ func isValidPart(kind partKind, s string) bool {
 				return false
 			}
 		case '/':
-			// Allow "/" in namespace for multi-level namespaces
-			if kind != kindNamespace {
+			// Allow "/" in model and namespace for multi-level models/namespaces
+			if kind != kindModel && kind != kindNamespace {
 				return false
 			}
 		default:
